@@ -1,4 +1,5 @@
 import os
+
 import requests
 from requests.compat import urlparse, urljoin
 
@@ -57,7 +58,7 @@ def get_latest_launch_images_links():
         all_launches = get_all_launches_with_images()
         latest_launch = all_launches[max(all_launches)]
         latest_launch_images_links = latest_launch['flickr_images']
-    
+
     return latest_launch_images_links
 
 
