@@ -1,5 +1,6 @@
 import glob
 import os
+import time
 
 import requests
 from instabot import Bot
@@ -170,17 +171,64 @@ def post_pics():
         print(str(e))
 
 
-def main():
-    # download pics of last SpaceX launch
-    fetch_spacex_last_launch()
+def post_pics2():
+    posted_pic_list = []
+    try:
+        with open('pics.txt', 'r', encoding='utf8') as f:
+            posted_pic_list = f.read().splitlines()
+    except Exception:
+        posted_pic_list = []
 
-    # download pics of collection from Hubble Site
-    fetch_hubble_collection_images(
-        "holiday_cards"
-    )
+    timeout = 5
+
+    bot = Bot()
+    bot.login()
+
+    while True:
+        pics = glob.glob("./images/*.*")
+        pics = filter(
+            lambda file: file.endswith(PICTURES_EXTENTIONS),
+            pics
+        )
+        pics = sorted(pics)
+        try:
+            for pic in pics:
+                if pic in posted_pic_list:
+                    continue
+
+                caption = pic[:-4].split(" ")
+                caption = " ".join(caption[1:])
+
+                print("upload: " + caption)
+                bot.upload_photo(pic, caption=caption, options={"force_resize": True})
+                if bot.api.last_response.status_code != 200:
+                    print(bot.api.last_response)
+                    # snd msg
+                    break
+
+                if pic not in posted_pic_list:
+                    posted_pic_list.append(pic)
+                    with open('pics.txt', 'a', encoding='utf8') as f:
+                        f.write(pic + "\n")
+
+                time.sleep(timeout)
+
+        except Exception as e:
+            print(str(e))
+        time.sleep(5)
+
+
+def main():
+    # # download pics of last SpaceX launch
+    # fetch_spacex_last_launch()
+
+    # # download pics of collection from Hubble Site
+    # fetch_hubble_collection_images(
+    #     "holiday_cards"
+    # )
 
     # post pics to instagram
-    post_pics()
+    post_pics2()
 
 
 if __name__ == "__main__":
