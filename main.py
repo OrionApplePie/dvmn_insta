@@ -1,12 +1,13 @@
-import os
 import glob
+import os
 
-from instabot import Bot
 import requests
-from requests.compat import urlparse, urljoin
-
+from instabot import Bot
+from requests.compat import urljoin, urlparse
 
 IMAGES_FOLDER = "images"
+PICTURES_EXTENTIONS = ('jpg', 'JPG', 'jpeg', 'JPEG', 'png')
+
 SPACEX_API_URL = "https://api.spacexdata.com/v3/"
 HUBBLE_API_IMAGE_URL = "http://hubblesite.org/api/v3/image/"
 HUBBLE_API_IMAGES_URL = "http://hubblesite.org/api/v3/images/"
@@ -132,6 +133,43 @@ def fetch_hubble_collection_images(collection_name=""):
         fetch_image_hubble(image["id"])
 
 
+def post_pics():
+    """Post all pics from folder."""
+    posted_pic_list = []
+    try:
+        with open('pics.txt', 'r', encoding='utf8') as f:
+            posted_pic_list = f.read().splitlines()
+    except Exception:
+        posted_pic_list = []
+
+    bot = Bot()
+    bot.login()
+
+    pics = glob.glob("./images/*.*")
+    pics = filter(
+        lambda file: file.endswith(PICTURES_EXTENTIONS),
+        pics
+    )
+    try:
+        for pic in pics:
+            if pic in posted_pic_list:
+                continue
+
+            caption = ""
+            bot.upload_photo(pic, caption=caption)
+            if bot.api.last_response.status_code != 200:
+                print(bot.api.last_response)
+                break
+
+            if pic not in posted_pic_list:
+                posted_pic_list.append(pic)
+                with open('pics.txt', 'a', encoding='utf8') as f:
+                    f.write(pic + "\n")
+
+    except Exception as e:
+        print(str(e))
+
+
 def main():
     # download pics of last SpaceX launch
     fetch_spacex_last_launch()
@@ -141,19 +179,8 @@ def main():
         "holiday_cards"
     )
 
-    # # Upload pics from image folder to Instagram
-    # bot = Bot()
-    # bot.login()
-    # pics = glob.glob("./images/*.jpg")
-
-    # try:
-    #     for pic in pics:
-    #         print(pic)
-    #         bot.upload_photo(pic, caption="testing")
-    #         if bot.api.last_response.status_code != 200:
-    #             print(bot.api.last_response)
-    # except Exception as e:
-    #     print(str(e))
+    # post pics to instagram
+    post_pics()
 
 
 if __name__ == "__main__":
