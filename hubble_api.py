@@ -26,6 +26,8 @@ def main():
             "link: {0} --> ext: {1} "
             .format(link, get_file_extension(link=link))
         )
+    print(links[-1])
+
 
 
 if __name__ == "__main__":

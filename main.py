@@ -1,16 +1,23 @@
+import argparse
 import os
+import glob
 
 import requests
 from requests.compat import urlparse, urljoin
+from instabot import Bot
 
 
-BASE_SPACEX_API_URL = "https://api.spacexdata.com/v3/"
 IMAGES_FOLDER = "images"
+BASE_SPACEX_API_URL = "https://api.spacexdata.com/v3/"
+HUBBLE_API_IMAGE_URL = "http://hubblesite.org/api/v3/image/"
+HUBBLE_API_IMAGES_URL = "http://hubblesite.org/api/v3/images/"
 
 
 def download_image(url="", folder="", img_name=""):
     """Function for downloading image by given url and save it to folder."""
-    response = requests.get(url)
+    response = requests.get(
+        url=url, verify=False
+    )
     response.raise_for_status()
     # TODO: make names by enumerate
     file_name = os.path.join(folder, img_name)
@@ -77,8 +84,78 @@ def fetch_spacex_last_launch():
         )
 
 
+def get_file_extension(link=""):
+    parts = link.split(".")
+    return parts[-1]
+
+
+def fetch_image_hubble(image_id=""):
+    response = requests.get(
+        url=urljoin(HUBBLE_API_IMAGE_URL, str(image_id))
+    )
+    response.raise_for_status()
+    image_files = response.json()["image_files"]
+    links = []
+    for image_file in image_files:
+        links.append(
+            image_file["file_url"]
+        )
+    final_image_link = "".join(["https:", links[-1]])
+    print(final_image_link)
+    file_name = ".".join(
+        [
+            str(image_id),
+            get_file_extension(final_image_link)
+        ]
+    )
+    download_image(
+        url=final_image_link,
+        folder=IMAGES_FOLDER,
+        img_name=file_name
+    )
+
+def get_hubble_collection_images_ids(collection_name=""):
+    """Fetch id's of collection."""
+    url = urljoin(HUBBLE_API_IMAGES_URL, collection_name)
+    print(url)
+    response = requests.get(url, verify=False)
+    response.raise_for_status()
+    images_ids = []
+    images = response.json()
+    for image in images:
+        images_ids.append(image["id"])
+    return images_ids
+
+
 def main():
-    fetch_spacex_last_launch()
+    # fetch_spacex_last_launch()
+    # fetch_image_hubble(4001)
+    # ids = get_hubble_collection_images_ids("spacecraft")
+    # print(ids)
+    # for id in ids:
+    #     print("downloading {0}".format(id))
+    #     fetch_image_hubble(id)
+    parser = argparse.ArgumentParser(add_help=True)
+    parser.add_argument('-u', type=str, help="username")
+    parser.add_argument('-p', type=str, help="password")
+    parser.add_argument('-caption', type=str, help="caption for photo")
+    args = parser.parse_args()
+
+    bot = Bot()
+    bot.login()
+    user_id = bot.get_user_id_from_username("north_viking_saw")
+    user_info = bot.get_user_info(user_id)
+    print(user_info['biography'])
+
+    pics = glob.glob("./images/pics/*.jpg")
+    try:
+        for pic in pics:
+            print(pic)
+            bot.upload_photo(pic, caption="testing")
+            if bot.api.last_response.status_code != 200:
+                print(bot.api.last_response)
+    except Exception as e:
+        print(str(e))
 
 
 if __name__ == "__main__":
