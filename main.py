@@ -1,14 +1,13 @@
 import glob
 import os
 import time
+from io import open
+import shutil
 
 import requests
 from instabot import Bot
-from instabot.api.api_photo import (
-    compatible_aspect_ratio,
-    get_image_size,
-    resize_image
-)
+from instabot.api.api_photo import (compatible_aspect_ratio, get_image_size,
+                                    resize_image)
 from requests.compat import urljoin, urlparse
 
 IMAGES_FOLDER = "images"
@@ -30,13 +29,51 @@ def download_image(url="", folder="", img_name=""):
         pass
     print("Downloading {0}\n".format(url))
     response = requests.get(
-        url=url, verify=False
+        url=url, stream=True, verify=False
     )
     response.raise_for_status()
     file_name = os.path.join(folder, img_name)
 
     with open(file_name, 'wb') as file:
-        file.write(response.content)
+        for chunk in response.iter_content(1024):
+            file.write(chunk)
+
+
+def download_image2(url="", folder="", img_name=""):
+    """Function for downloading image by given url
+    and saving it to given folder."""
+    try:
+        os.makedirs(folder)
+    except FileExistsError:
+        pass
+    print("Downloading {0}\n".format(url))
+    r = requests.get(
+        url=url, stream=True, verify=False
+    )
+    r.raise_for_status()
+
+    file_name = os.path.join(folder, img_name)
+    if r.status_code == 200:
+        with open(file_name, 'wb') as f:
+            r.raw.decode_content = True
+            shutil.copyfileobj(r.raw, f)        
+
+
+def download_file(url="", folder="", img_name=""):
+    try:
+        os.makedirs(folder)
+    except FileExistsError:
+        pass
+    print("Downloading {0}\n".format(url))
+    file_name = os.path.join(folder, img_name)
+    # NOTE the stream=True parameter below
+    with requests.get(url, stream=True, verify=False) as r:
+        r.raise_for_status()
+        with open(file_name, 'wb') as f:
+            for chunk in r.iter_content(chunk_size=8192): 
+                if chunk: # filter out keep-alive new chunks
+                    f.write(chunk)
+                    # f.flush()
 
 
 def get_all_launches_with_images():
@@ -202,7 +239,7 @@ def main():
 
     # post pics to instagram
     post_pics()
-
+  
 
 if __name__ == "__main__":
     main()
