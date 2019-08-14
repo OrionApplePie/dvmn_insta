@@ -4,6 +4,11 @@ import time
 
 import requests
 from instabot import Bot
+from instabot.api.api_photo import (
+    compatible_aspect_ratio,
+    get_image_size,
+    resize_image
+)
 from requests.compat import urljoin, urlparse
 
 IMAGES_FOLDER = "images"
@@ -135,43 +140,6 @@ def fetch_hubble_collection_images(collection_name=""):
 
 
 def post_pics():
-    """Post all pics from folder."""
-    posted_pic_list = []
-    try:
-        with open('pics.txt', 'r', encoding='utf8') as f:
-            posted_pic_list = f.read().splitlines()
-    except Exception:
-        posted_pic_list = []
-
-    bot = Bot()
-    bot.login()
-
-    pics = glob.glob("./images/*.*")
-    pics = filter(
-        lambda file: file.endswith(PICTURES_EXTENTIONS),
-        pics
-    )
-    try:
-        for pic in pics:
-            if pic in posted_pic_list:
-                continue
-
-            caption = ""
-            bot.upload_photo(pic, caption=caption)
-            if bot.api.last_response.status_code != 200:
-                print(bot.api.last_response)
-                break
-
-            if pic not in posted_pic_list:
-                posted_pic_list.append(pic)
-                with open('pics.txt', 'a', encoding='utf8') as f:
-                    f.write(pic + "\n")
-
-    except Exception as e:
-        print(str(e))
-
-
-def post_pics2():
     posted_pic_list = []
     try:
         with open('pics.txt', 'r', encoding='utf8') as f:
@@ -199,8 +167,11 @@ def post_pics2():
                 caption = pic[:-4].split(" ")
                 caption = " ".join(caption[1:])
 
-                print("upload: " + caption)
-                bot.upload_photo(pic, caption=caption, options={"force_resize": True})
+                print("upload: " + pic)
+                if not compatible_aspect_ratio(get_image_size(pic)):
+                    pic = resize_image(pic)
+
+                bot.upload_photo(pic, caption=caption)
                 if bot.api.last_response.status_code != 200:
                     print(bot.api.last_response)
                     # snd msg
@@ -219,16 +190,16 @@ def post_pics2():
 
 
 def main():
-    # # download pics of last SpaceX launch
-    # fetch_spacex_last_launch()
+    # download pics of last SpaceX launch
+    fetch_spacex_last_launch()
 
-    # # download pics of collection from Hubble Site
-    # fetch_hubble_collection_images(
-    #     "holiday_cards"
-    # )
+    # download pics of collection from Hubble Site
+    fetch_hubble_collection_images(
+        "holiday_cards"
+    )
 
     # post pics to instagram
-    post_pics2()
+    post_pics()
 
 
 if __name__ == "__main__":
