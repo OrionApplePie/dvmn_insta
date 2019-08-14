@@ -12,7 +12,9 @@ from instabot.api.api_photo import (
 from requests.compat import urljoin, urlparse
 
 IMAGES_FOLDER = "images"
-PICTURES_EXTENTIONS = ('jpg', 'JPG', 'jpeg', 'JPEG', 'png')
+PICTURES_EXTENTIONS = (
+    'jpg', 'JPG', 'jpeg', 'JPEG', 'png', 'PNG', 'tif', 'TIF'
+)
 
 SPACEX_API_URL = "https://api.spacexdata.com/v3/"
 HUBBLE_API_IMAGE_URL = "http://hubblesite.org/api/v3/image/"
@@ -26,7 +28,7 @@ def download_image(url="", folder="", img_name=""):
         os.makedirs(folder)
     except FileExistsError:
         pass
-    # print("Downloading {0}\n".format(url))
+    print("Downloading {0}\n".format(url))
     response = requests.get(
         url=url, verify=False
     )
@@ -195,7 +197,7 @@ def main():
 
     # download pics of collection from Hubble Site
     fetch_hubble_collection_images(
-        "holiday_cards"
+        "spacecraft"
     )
 
     # post pics to instagram
