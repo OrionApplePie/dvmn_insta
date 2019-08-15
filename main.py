@@ -1,18 +1,24 @@
 import glob
 import os
+import shutil
 import time
 from io import open
-import shutil
+
+from pathlib import Path
 
 import requests
 from instabot import Bot
 from instabot.api.api_photo import (compatible_aspect_ratio, get_image_size,
                                     resize_image)
+from PIL import ImageFile, Image
 from requests.compat import urljoin, urlparse
 
 IMAGES_FOLDER = "images"
 PICTURES_EXTENTIONS = (
-    'jpg', 'JPG', 'jpeg', 'JPEG', 'png', 'PNG', 'tif', 'TIF'
+    'jpg', 'JPG', 'jpeg', 'JPEG',
+)
+PICTURES_EXTENTIONS_FOR_CONVERTION = (
+    'png', 'tif'
 )
 
 SPACEX_API_URL = "https://api.spacexdata.com/v3/"
@@ -20,19 +26,47 @@ HUBBLE_API_IMAGE_URL = "http://hubblesite.org/api/v3/image/"
 HUBBLE_API_IMAGES_URL = "http://hubblesite.org/api/v3/images/"
 
 
+
+def get_filename_and_extension_apart(file_path=""):
+    filename_w_ext = os.path.basename(file_path)
+    filename, file_extension = os.path.splitext(filename_w_ext)
+    return filename, file_extension
+
+
+def convert_tif_to_jpg(name=""):
+    ImageFile.LOAD_TRUNCATED_IMAGES = True
+    im = Image.open(name)
+    file_name = os.path.splitext(name)[0]
+    im.save(file_name + '.jpg', 'JPEG')
+
+
+def convert_png_to_jpg(name=""):
+    filename, _ = get_filename_and_extension_apart(name)
+    path, _ = os.path.split(name)
+    im = Image.open(name)
+    rgb_im = im.convert('RGB')
+    rgb_im.save(os.path.join(path, filename) + '.jpg')
+
+
 def download_image(url="", folder="", img_name=""):
-    """Function for downloading image by given url
+    """Function for downloading image by given url 
     and saving it to given folder."""
     try:
         os.makedirs(folder)
     except FileExistsError:
         pass
+    file_name = os.path.join(folder, img_name)
+    path = Path(file_name)
+    if path.is_file():
+        print(("file with name {0}"
+             "alredy exist... stop downloading").format(file_name))
+        return
+
     print("Downloading {0}\n".format(url))
     response = requests.get(
         url=url, stream=True, verify=False
     )
     response.raise_for_status()
-    file_name = os.path.join(folder, img_name)
 
     with open(file_name, 'wb') as file:
         for chunk in response.iter_content(1024):
@@ -177,6 +211,22 @@ def fetch_hubble_collection_images(collection_name=""):
     for image in images:
         fetch_image_hubble(image["id"])
 
+def convert_images_to_jpg(folder=""):
+    """https://github.com/mgp25/Instagram-API/issues/1"""
+    pics = glob.glob("./images/*.*")
+    pics = filter(
+        lambda file: file.endswith(PICTURES_EXTENTIONS_FOR_CONVERTION),
+        pics
+    )
+    for img in pics:
+        _, ext = os.path.splitext(img)
+        if ext.lower() == '.tif':
+            convert_tif_to_jpg(img)
+        elif ext.lower() ==  '.png':
+            convert_png_to_jpg(img)
+        else:
+            pass
+
 
 def post_pics():
     posted_pic_list = []
@@ -208,9 +258,11 @@ def post_pics():
 
                 print("upload: " + pic)
                 if not compatible_aspect_ratio(get_image_size(pic)):
+                    old_pic = pic
                     pic = resize_image(pic)
-
+                    print("old pic; {0} --> new pic {1}".format(old_pic, pic))
                 bot.upload_photo(pic, caption=caption)
+
                 if bot.api.last_response.status_code != 200:
                     print(bot.api.last_response)
                     # snd msg
@@ -220,7 +272,11 @@ def post_pics():
                     posted_pic_list.append(pic)
                     with open('pics.txt', 'a', encoding='utf8') as f:
                         f.write(pic + "\n")
-
+                if old_pic not in posted_pic_list:
+                    posted_pic_list.append(old_pic)
+                    with open('pics.txt', 'a', encoding='utf8') as f:
+                            f.write(old_pic + "\n")
+    
                 time.sleep(timeout)
 
         except Exception as e:
@@ -234,12 +290,13 @@ def main():
 
     # download pics of collection from Hubble Site
     fetch_hubble_collection_images(
-        "spacecraft"
+        "stsci_gallery"
     )
+    convert_images_to_jpg()
 
     # post pics to instagram
     post_pics()
-  
+
 
 if __name__ == "__main__":
     main()
