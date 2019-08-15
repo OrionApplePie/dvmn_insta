@@ -3,63 +3,80 @@ import os
 import shutil
 import time
 from io import open
-
 from pathlib import Path
 
 import requests
+from dotenv import load_dotenv
 from instabot import Bot
 from instabot.api.api_photo import (compatible_aspect_ratio, get_image_size,
                                     resize_image)
-from PIL import ImageFile, Image
+from PIL import Image, ImageFile
 from requests.compat import urljoin, urlparse
+from requests.exceptions import HTTPError
+
+
+SPACEX_API_URL = "https://api.spacexdata.com/v3/"
+HUBBLE_API_IMAGE_URL = "http://hubblesite.org/api/v3/image/"
+HUBBLE_API_IMAGES_URL = "http://hubblesite.org/api/v3/images/"
+
+DEFAULT_CHUNK_SIZE = 1024
+TIMEOUT_BETWEEN_POSTS = 5
 
 IMAGES_FOLDER = "images"
 PICTURES_EXTENTIONS = (
     'jpg', 'JPG', 'jpeg', 'JPEG',
 )
 PICTURES_EXTENTIONS_FOR_CONVERTION = (
-    'png', 'tif'
+    'png', 'tif', 'PNG', 'TIF'
 )
 
-SPACEX_API_URL = "https://api.spacexdata.com/v3/"
-HUBBLE_API_IMAGE_URL = "http://hubblesite.org/api/v3/image/"
-HUBBLE_API_IMAGES_URL = "http://hubblesite.org/api/v3/images/"
+DEFAULT_HASHTAGS = [
+    "#space", "#sky", "#galaxy", "#hubble",
+    "#spacepics", "#stars", "#solar"
+]
 
 
-
-def get_filename_and_extension_apart(file_path=""):
-    filename_w_ext = os.path.basename(file_path)
-    filename, file_extension = os.path.splitext(filename_w_ext)
-    return filename, file_extension
+def get_file_extension(link=""):
+    parts = link.split(".")
+    return parts[-1]
 
 
-def convert_tif_to_jpg(name=""):
+def replace_ext(filename="", ext=""):
+    filename_w_ext, _ = os.path.splitext(filename)
+    return "".join([filename_w_ext, ext])
+
+
+def convert_tif_to_jpg(filename=""):
     ImageFile.LOAD_TRUNCATED_IMAGES = True
-    im = Image.open(name)
-    file_name = os.path.splitext(name)[0]
-    im.save(file_name + '.jpg', 'JPEG')
+    image = Image.open(filename)
+    image.save(
+        replace_ext(filename, '.jpg'), 'JPEG'
+    )
 
 
-def convert_png_to_jpg(name=""):
-    filename, _ = get_filename_and_extension_apart(name)
-    path, _ = os.path.split(name)
-    im = Image.open(name)
-    rgb_im = im.convert('RGB')
-    rgb_im.save(os.path.join(path, filename) + '.jpg')
+def convert_png_to_jpg(filename=""):
+    image = Image.open(filename)
+    rgb_image = image.convert('RGB')
+    rgb_image.save(
+        replace_ext(filename, '.jpg')
+    )
 
 
-def download_image(url="", folder="", img_name=""):
+def download_image(url="", folder="", img_name="", rewrite=False):
     """Function for downloading image by given url 
     and saving it to given folder."""
     try:
         os.makedirs(folder)
     except FileExistsError:
         pass
+
     file_name = os.path.join(folder, img_name)
     path = Path(file_name)
-    if path.is_file():
-        print(("file with name {0}"
-             "alredy exist... stop downloading").format(file_name))
+
+    # если есть опция перезаписи и если уже есть такой файл, то не скачиваем
+    if not rewrite and path.is_file():
+        print(("File with name {0} "
+             "already exist... stop downloading").format(file_name))
         return
 
     print("Downloading {0}\n".format(url))
@@ -69,45 +86,8 @@ def download_image(url="", folder="", img_name=""):
     response.raise_for_status()
 
     with open(file_name, 'wb') as file:
-        for chunk in response.iter_content(1024):
+        for chunk in response.iter_content(DEFAULT_CHUNK_SIZE):
             file.write(chunk)
-
-
-def download_image2(url="", folder="", img_name=""):
-    """Function for downloading image by given url
-    and saving it to given folder."""
-    try:
-        os.makedirs(folder)
-    except FileExistsError:
-        pass
-    print("Downloading {0}\n".format(url))
-    r = requests.get(
-        url=url, stream=True, verify=False
-    )
-    r.raise_for_status()
-
-    file_name = os.path.join(folder, img_name)
-    if r.status_code == 200:
-        with open(file_name, 'wb') as f:
-            r.raw.decode_content = True
-            shutil.copyfileobj(r.raw, f)        
-
-
-def download_file(url="", folder="", img_name=""):
-    try:
-        os.makedirs(folder)
-    except FileExistsError:
-        pass
-    print("Downloading {0}\n".format(url))
-    file_name = os.path.join(folder, img_name)
-    # NOTE the stream=True parameter below
-    with requests.get(url, stream=True, verify=False) as r:
-        r.raise_for_status()
-        with open(file_name, 'wb') as f:
-            for chunk in r.iter_content(chunk_size=8192): 
-                if chunk: # filter out keep-alive new chunks
-                    f.write(chunk)
-                    # f.flush()
 
 
 def get_all_launches_with_images():
@@ -144,15 +124,10 @@ def get_latest_launch_images_links():
     latest_launch_images_links = response.json()['links']['flickr_images']
     if not latest_launch_images_links:
         all_launches = get_all_launches_with_images()
-        # get last number
+        # последний по номеру запуск
         latest_launch_images_links = all_launches[max(all_launches)]
 
     return latest_launch_images_links
-
-
-def get_file_extension(link=""):
-    parts = link.split(".")
-    return parts[-1]
 
 
 def fetch_spacex_last_launch():
@@ -184,7 +159,7 @@ def fetch_image_hubble(image_id=""):
         links.append(
             image_file["file_url"]
         )
-    # use last link - best quality image
+    # берем последнюю ссылку, фото лучшего качества
     final_image_link = "".join(["https:", links[-1]])
 
     file_name = ".".join(
@@ -211,18 +186,22 @@ def fetch_hubble_collection_images(collection_name=""):
     for image in images:
         fetch_image_hubble(image["id"])
 
+
 def convert_images_to_jpg(folder=""):
-    """https://github.com/mgp25/Instagram-API/issues/1"""
-    pics = glob.glob("./images/*.*")
+    """Function for convertation pics to Jpg format,
+    https://github.com/mgp25/Instagram-API/issues/1"""
+    pics = glob.glob(
+        "".join(["./", IMAGES_FOLDER, "/*.*"])
+    )
     pics = filter(
         lambda file: file.endswith(PICTURES_EXTENTIONS_FOR_CONVERTION),
         pics
     )
     for img in pics:
-        _, ext = os.path.splitext(img)
-        if ext.lower() == '.tif':
+        ext = get_file_extension(img)
+        if ext.lower() == 'tif':
             convert_tif_to_jpg(img)
-        elif ext.lower() ==  '.png':
+        elif ext.lower() ==  'png':
             convert_png_to_jpg(img)
         else:
             pass
@@ -230,19 +209,25 @@ def convert_images_to_jpg(folder=""):
 
 def post_pics():
     posted_pic_list = []
+    timeout = 5
     try:
         with open('pics.txt', 'r', encoding='utf8') as f:
             posted_pic_list = f.read().splitlines()
     except Exception:
         posted_pic_list = []
 
-    timeout = 5
-
+    insta_login = os.getenv("INSTA_LOGIN")
+    insta_password = os.getenv("INSTA_PASSWORD")
     bot = Bot()
-    bot.login()
+    bot.login(
+        username=insta_login,
+        password=insta_password
+    )
 
     while True:
-        pics = glob.glob("./images/*.*")
+        pics = glob.glob(
+            "".join(["./", IMAGES_FOLDER, "/*.*"])
+        )
         pics = filter(
             lambda file: file.endswith(PICTURES_EXTENTIONS),
             pics
@@ -253,19 +238,18 @@ def post_pics():
                 if pic in posted_pic_list:
                     continue
 
-                caption = pic[:-4].split(" ")
-                caption = " ".join(caption[1:])
+                caption = " ".join(DEFAULT_HASHTAGS)
 
                 print("upload: " + pic)
                 if not compatible_aspect_ratio(get_image_size(pic)):
                     old_pic = pic
                     pic = resize_image(pic)
-                    print("old pic; {0} --> new pic {1}".format(old_pic, pic))
+                    print("old pic: {0} --> new pic {1}".format(old_pic, pic))
+
                 bot.upload_photo(pic, caption=caption)
 
                 if bot.api.last_response.status_code != 200:
                     print(bot.api.last_response)
-                    # snd msg
                     break
 
                 if pic not in posted_pic_list:
@@ -276,8 +260,8 @@ def post_pics():
                     posted_pic_list.append(old_pic)
                     with open('pics.txt', 'a', encoding='utf8') as f:
                             f.write(old_pic + "\n")
-    
-                time.sleep(timeout)
+
+                time.sleep(TIMEOUT_BETWEEN_POSTS)
 
         except Exception as e:
             print(str(e))
@@ -285,15 +269,18 @@ def post_pics():
 
 
 def main():
-    # download pics of last SpaceX launch
-    fetch_spacex_last_launch()
-
-    # download pics of collection from Hubble Site
-    fetch_hubble_collection_images(
-        "stsci_gallery"
-    )
-    convert_images_to_jpg()
-
+    load_dotenv()
+    try:
+        # download pics of last SpaceX launch
+        fetch_spacex_last_launch()
+    
+        # download pics of collection from Hubble Site
+        fetch_hubble_collection_images(
+            "stsci_gallery"
+        )
+        convert_images_to_jpg()
+    except HTTPError as error:
+        exit("Невозможно получить данные с сервера:\n{0}\n".format(error))
     # post pics to instagram
     post_pics()
 
