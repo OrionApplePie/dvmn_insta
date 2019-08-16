@@ -26,7 +26,7 @@ def get_all_launches_with_images():
         if launch['links']['flickr_images']:
             launches_with_images[
                 launch['flight_number']
-            ] = launch['links']['flickr_images'] 
+            ] = launch['links']['flickr_images']
     return launches_with_images
 
 

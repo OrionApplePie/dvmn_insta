@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+import argparse
+
 import requests
 from requests.compat import urljoin
 from requests.exceptions import HTTPError
@@ -13,6 +15,9 @@ IMAGES_FOLDER = "images"
 
 def fetch_hubble_image(image_id=""):
     """Download one pic by id from Hubble Site."""
+    file_name = "".join(
+        ["hubble", str(image_id)]
+    )
     response = requests.get(
         url=urljoin(HUBBLE_API_IMAGE_URL, str(image_id))
     )
@@ -29,7 +34,7 @@ def fetch_hubble_image(image_id=""):
     file_ext = final_image_link.split(".")[-1]
     file_name = ".".join(
         [
-            str(image_id),
+            file_name,
             file_ext
         ]
     )
@@ -55,7 +60,20 @@ def fetch_hubble_collection_images(collection_name=""):
 
 
 def main():
-    collection = "stsci_gallery"
+    app_description = (
+        "Консольная утилита для загрузки фотографий"
+        " сделанных телескопом Хаббл."
+    ) 
+    parser = argparse.ArgumentParser(
+        description=app_description
+    )
+    parser.add_argument(
+        "collection",
+        help="Назване коллекции фотоснимков Хаббла.",
+        nargs="?", const="", type=str  # by default empty parameter is 'science' collection 
+    )
+    args = parser.parse_args()
+    collection = args.collection
     try:
         fetch_hubble_collection_images(collection)
     except HTTPError as error:

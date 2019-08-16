@@ -2,17 +2,13 @@ import glob
 import os
 import time
 from io import open
-from pathlib import Path
 
-import requests
 from dotenv import load_dotenv
 from instabot import Bot
 from instabot.api.api_photo import (compatible_aspect_ratio, get_image_size,
                                     resize_image)
-from requests.compat import urljoin
-from requests.exceptions import HTTPError
 
-from utils import replace_ext, convert_images_to_jpg
+from utils import convert_images_to_jpg
 
 TIMEOUT_BETWEEN_POSTS = 5
 
@@ -31,8 +27,8 @@ DEFAULT_HASHTAGS = [
 def post_pics():
     posted_pic_list = []
     try:
-        with open('pics.txt', 'r', encoding='utf8') as f:
-            posted_pic_list = f.read().splitlines()
+        with open('pics.txt', 'r', encoding='utf8') as file:
+            posted_pic_list = file.read().splitlines()
     except Exception:
         posted_pic_list = []
 
@@ -74,18 +70,18 @@ def post_pics():
 
                 if pic not in posted_pic_list:
                     posted_pic_list.append(pic)
-                    with open('pics.txt', 'a', encoding='utf8') as f:
-                        f.write(pic + "\n")
+                    with open('pics.txt', 'a', encoding='utf8') as file:
+                        file.write(pic + "\n")
 
                 if old_pic not in posted_pic_list:
                     posted_pic_list.append(old_pic)
-                    with open('pics.txt', 'a', encoding='utf8') as f:
-                        f.write(old_pic + "\n")
+                    with open('pics.txt', 'a', encoding='utf8') as file:
+                        file.write(old_pic + "\n")
 
                 time.sleep(TIMEOUT_BETWEEN_POSTS)
 
-        except Exception as e:
-            print(str(e))
+        except Exception as exception:
+            print(str(exception))
         time.sleep(5)
 
 def main():

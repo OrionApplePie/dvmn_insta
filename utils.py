@@ -14,7 +14,7 @@ PICTURES_EXTENTIONS_FOR_CONVERTION = (
 )
 
 def download_image(url="", img_path="", img_name="", rewrite=True):
-    """Function for downloading image by given url 
+    """Function for downloading image by given url
     and saving it to given folder."""
     try:
         os.makedirs(img_path)
@@ -26,8 +26,10 @@ def download_image(url="", img_path="", img_name="", rewrite=True):
 
     # если есть опция перезаписи и если уже есть такой файл, то не скачиваем
     if not rewrite and path.is_file():
-        print(("File with name {0} "
-             "already exist... stop downloading").format(file_name))
+        print(
+            ("File with name {0} "
+             "already exist... stop downloading").format(file_name)
+        )
         return
 
     response = requests.get(
@@ -43,7 +45,6 @@ def download_image(url="", img_path="", img_name="", rewrite=True):
 def replace_ext(filename="", ext=""):
     filename_w_ext, _ = os.path.splitext(filename)
     return "".join([filename_w_ext, ext])
-
 
 
 def convert_tif_to_jpg(filename=""):
@@ -76,7 +77,7 @@ def convert_images_to_jpg(folder=""):
         ext = img.split(".")[-1]
         if ext.lower() == 'tif':
             convert_tif_to_jpg(img)
-        elif ext.lower() ==  'png':
+        elif ext.lower() == 'png':
             convert_png_to_jpg(img)
         else:
             pass
