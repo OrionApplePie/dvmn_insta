@@ -16,20 +16,14 @@ PICTURES_EXTENTIONS_FOR_CONVERTION = (
 def download_image(url="", img_path="", img_name="", rewrite=True):
     """Function for downloading image by given url
     and saving it to given folder."""
-    try:
-        os.makedirs(img_path)
-    except FileExistsError:
-        pass
+
+    os.makedirs(img_path, exist_ok=True)
 
     file_name = os.path.join(img_path, img_name)
     path = Path(file_name)
 
     # если есть опция перезаписи и если уже есть такой файл, то не скачиваем
     if not rewrite and path.is_file():
-        print(
-            ("File with name {0} "
-             "already exist... stop downloading").format(file_name)
-        )
         return
 
     response = requests.get(
@@ -40,11 +34,12 @@ def download_image(url="", img_path="", img_name="", rewrite=True):
     with open(file_name, 'wb') as file:
         for chunk in response.iter_content(DEFAULT_CHUNK_SIZE):
             file.write(chunk)
+    return file_name
 
 
 def replace_ext(filename="", ext=""):
     filename_w_ext, _ = os.path.splitext(filename)
-    return "".join([filename_w_ext, ext])
+    return f"{filename_w_ext}{ext}"
 
 
 def convert_tif_to_jpg(filename=""):
@@ -66,18 +61,17 @@ def convert_png_to_jpg(filename=""):
 def convert_images_to_jpg(folder=""):
     """Function for convertation pics to Jpg format,
     https://github.com/mgp25/Instagram-API/issues/1"""
-    pics = glob.glob(
-        "".join(["./", IMAGES_FOLDER, "/*.*"])
-    )
+
+    pics = glob.glob(f"./{IMAGES_FOLDER}/*.*")
     pics = filter(
         lambda file: file.endswith(PICTURES_EXTENTIONS_FOR_CONVERTION),
         pics
     )
     for img in pics:
-        ext = img.split(".")[-1]
-        if ext.lower() == 'tif':
+        _, ext = os.path.splitext(img)
+        if ext.lower() == '.tif':
             convert_tif_to_jpg(img)
-        elif ext.lower() == 'png':
+        elif ext.lower() == '.png':
             convert_png_to_jpg(img)
         else:
             pass

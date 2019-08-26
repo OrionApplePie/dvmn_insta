@@ -15,29 +15,21 @@ IMAGES_FOLDER = "images"
 
 def fetch_hubble_image(image_id=""):
     """Download one pic by id from Hubble Site."""
-    file_name = "".join(
-        ["hubble", str(image_id)]
-    )
+    file_name = f"hubble{str(image_id)}"
+
     response = requests.get(
         url=urljoin(HUBBLE_API_IMAGE_URL, str(image_id))
     )
     response.raise_for_status()
     image_files = response.json()["image_files"]
 
-    links = []
-    for image_file in image_files:
-        links.append(
-            image_file["file_url"]
-        )
+    links = [image_file["file_url"] for image_file in image_files]
+
     # берем последнюю ссылку, фото лучшего качества
-    final_image_link = "".join(["https:", links[-1]])
+    final_image_link = f"https:{links[-1]}"
     file_ext = final_image_link.split(".")[-1]
-    file_name = ".".join(
-        [
-            file_name,
-            file_ext
-        ]
-    )
+    file_name = f"{file_name}.{file_ext}"
+
     print("Download by link: {0} ".format(final_image_link))
     download_image(
         url=final_image_link,

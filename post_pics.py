@@ -41,9 +41,7 @@ def post_pics():
     )
 
     while True:
-        pics = glob.glob(
-            "".join(["./", IMAGES_FOLDER, "/*.*"])
-        )
+        pics = glob.glob(f"./{IMAGES_FOLDER}/*.*")
         pics = filter(
             lambda file: file.endswith(PICTURES_EXTENTIONS),
             pics

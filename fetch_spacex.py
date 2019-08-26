@@ -56,9 +56,8 @@ def fetch_spacex_last_launch(images_path=IMAGES_FOLDER):
 
     for num, link in enumerate(get_latest_launch_images_links()):
         file_ext = link.split(".")[-1]
-        file_name = ".".join(
-            [default_filename + str(num), file_ext]
-        )
+        file_name = f"{default_filename}{str(num)}.{file_ext}"
+
         print("Download by link: {0} ".format(link))
         download_image(
             url=link,
