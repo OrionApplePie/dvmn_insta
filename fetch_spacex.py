@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+import os
+
 import requests
 from requests.compat import urljoin
 from requests.exceptions import HTTPError
@@ -21,12 +23,11 @@ def get_all_launches_with_images():
     )
     response.raise_for_status()
 
-    launches_with_images = {}
-    for launch in response.json():
-        if launch['links']['flickr_images']:
-            launches_with_images[
-                launch['flight_number']
-            ] = launch['links']['flickr_images']
+    launches_with_images = {
+        launch['flight_number']: launch['links']['flickr_images']
+        for launch in response.json()
+        if launch['links']['flickr_images']
+    }
     return launches_with_images
 
 
@@ -55,8 +56,8 @@ def fetch_spacex_last_launch(images_path=IMAGES_FOLDER):
     default_filename = "spacex"
 
     for num, link in enumerate(get_latest_launch_images_links()):
-        file_ext = link.split(".")[-1]
-        file_name = f"{default_filename}{str(num)}.{file_ext}"
+        _, ext = os.path.splitext(link)
+        file_name = f"{default_filename}{str(num)}{ext}"
 
         print("Download by link: {0} ".format(link))
         download_image(

@@ -75,3 +75,4 @@ def convert_images_to_jpg(folder=""):
             convert_png_to_jpg(img)
         else:
             pass
+ 
