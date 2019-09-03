@@ -61,11 +61,9 @@ def convert_png_to_jpg(filename=""):
 def convert_images_to_jpg(folder=""):
     """Function for convertation pics to Jpg format,
     https://github.com/mgp25/Instagram-API/issues/1"""
-
-    pics = glob.glob(f"./{IMAGES_FOLDER}/*.*")
-    pics = filter(
-        lambda file: file.endswith(PICTURES_EXTENTIONS_FOR_CONVERTION),
-        pics
+    pics = (
+        pic for pic in glob.glob(f"./{IMAGES_FOLDER}/*.*")
+        if pic.endswith(PICTURES_EXTENTIONS_FOR_CONVERTION)
     )
     for img in pics:
         _, ext = os.path.splitext(img)

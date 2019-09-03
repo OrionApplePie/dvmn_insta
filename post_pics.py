@@ -1,4 +1,5 @@
 import glob
+import logging
 import os
 import time
 from io import open
@@ -24,6 +25,27 @@ DEFAULT_HASHTAGS = [
     "#spacepics", "#stars", "#solar"
 ]
 
+logging.basicConfig(filename="logs.log", level=logging.INFO)
+
+
+def remember_pic(pics=[], posted_pic_list=None, file_name=""):
+    """Записывает в файл имена файлов фотографий,
+    которые еще не были опубликованы."""
+    for pic in pics:
+        if pic and pic not in posted_pic_list:
+            posted_pic_list.append(pic)
+            with open(file_name, 'a', encoding='utf8') as file:
+                file.write(pic + "\n")
+
+
+def pics_generator(pics=[], posted_pic_list=None):
+    for pic in pics:
+        new_pic = ""
+        if pic not in posted_pic_list:
+            if not compatible_aspect_ratio(get_image_size(pic)):
+                new_pic = resize_image(pic)
+            yield pic, new_pic 
+
 
 def post_pics():
     posted_pic_list = []
@@ -33,6 +55,7 @@ def post_pics():
     except IOError:
         posted_pic_list = []
 
+    caption = " ".join(DEFAULT_HASHTAGS)
     insta_login = os.getenv("INSTA_LOGIN")
     insta_password = os.getenv("INSTA_PASSWORD")
     bot = Bot()
@@ -42,44 +65,28 @@ def post_pics():
     )
 
     while True:
-        pics = glob.glob(f"./{IMAGES_FOLDER}/*.*")
-        pics = filter(
-            lambda file: file.endswith(PICTURES_EXTENTIONS),
-            pics
-        )
+        pics = [
+            pic for pic in glob.glob(f"./{IMAGES_FOLDER}/*.*")
+            if pic.endswith(PICTURES_EXTENTIONS)
+        ]
         pics = sorted(pics)
 
-        for pic in pics:
-            if pic in posted_pic_list:
-                continue
-
-            caption = " ".join(DEFAULT_HASHTAGS)
-            print("upload: " + pic)
-
-            if not compatible_aspect_ratio(get_image_size(pic)):
-                old_pic = pic
-                pic = resize_image(pic)
-                print("Resize pic: {0} --> new pic {1}".format(old_pic, pic))
-
+        for pic, new_pic in pics_generator(pics, posted_pic_list):            
+            pic_load = new_pic if new_pic else pic
+            print(f"Загрузка: {pic_load}")
             try:
-                bot.upload_photo(pic, caption=caption)
+                bot.upload_photo(pic_load, caption=caption)
             except ConnectionError as error:
-                print(str(error))
+                logging.error(str(error))
 
             if bot.api.last_response.status_code != 200:
-                print(bot.api.last_response)
+                logging.error(bot.api.last_response)
                 break
-
-            if pic not in posted_pic_list:
-                posted_pic_list.append(pic)
-                with open('pics.txt', 'a', encoding='utf8') as file:
-                    file.write(pic + "\n")
-
-            if old_pic and old_pic not in posted_pic_list:
-                posted_pic_list.append(old_pic)
-                with open('pics.txt', 'a', encoding='utf8') as file:
-                    file.write(old_pic + "\n")
-
+            remember_pic(
+                pics=[pic, new_pic],
+                posted_pic_list=posted_pic_list,
+                file_name="pics.txt"
+            )
             time.sleep(TIMEOUT_BETWEEN_POSTS)
         time.sleep(5)
 
