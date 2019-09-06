@@ -71,17 +71,19 @@ def post_pics():
         ]
         pics = sorted(pics)
 
-        for pic, new_pic in pics_generator(pics, posted_pic_list):            
+        for pic, new_pic in pics_generator(pics, posted_pic_list):
             pic_load = new_pic if new_pic else pic
             print(f"Загрузка: {pic_load}")
             try:
                 bot.upload_photo(pic_load, caption=caption)
             except ConnectionError as error:
                 logging.error(str(error))
+                print("connetion error ! continue!")
+                continue
 
             if bot.api.last_response.status_code != 200:
                 logging.error(bot.api.last_response)
-                break
+                continue
             remember_pic(
                 pics=[pic, new_pic],
                 posted_pic_list=posted_pic_list,
