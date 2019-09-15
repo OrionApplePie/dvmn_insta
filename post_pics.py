@@ -78,12 +78,12 @@ def post_pics():
                 bot.upload_photo(pic_load, caption=caption)
             except ConnectionError as error:
                 logging.error(str(error))
-                print("connetion error ! continue!")
                 continue
 
             if bot.api.last_response.status_code != 200:
                 logging.error(bot.api.last_response)
                 continue
+
             remember_pic(
                 pics=[pic, new_pic],
                 posted_pic_list=posted_pic_list,
